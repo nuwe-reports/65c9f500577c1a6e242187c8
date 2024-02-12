@@ -1,50 +1,68 @@
-package com.example.demo;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
-import org.springframework.test.context.junit4.SpringRunner;
 
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase.Replace;
-
-import com.example.demo.entities.*;
+import com.example.demo.entities.Doctor;
+import com.example.demo.entities.Patient;
+import com.example.demo.entities.Room;
+import com.example.demo.repositories.DoctorRepository;
+import com.example.demo.repositories.PatientRepository;
+import com.example.demo.repositories.RoomRepository;
 
 @DataJpaTest
-@AutoConfigureTestDatabase(replace=Replace.NONE)
-@TestInstance(Lifecycle.PER_CLASS)
 class EntityUnitTest {
 
-	@Autowired
-	private TestEntityManager entityManager;
+    @Autowired
+    private TestEntityManager entityManager;
 
-	private Doctor d1;
+    @Autowired
+    private DoctorRepository doctorRepository;
 
-	private Patient p1;
+    @Autowired
+    private PatientRepository patientRepository;
 
-    private Room r1;
+    @Autowired
+    private RoomRepository roomRepository;
 
-    private Appointment a1;
-    private Appointment a2;
-    private Appointment a3;
-
-    @Test
-    void this_is_a_test(){
-        // DELETE THIS TEST
-        assertThat(false).isEqualTo(true);
+    @AfterEach
+    void tearDown() {
+        entityManager.clear();
     }
 
-    /** TODO
-     * Implement tests for each Entity class: Doctor, Patient, Room and Appointment.
-     * Make sure you are as exhaustive as possible. Coverage is checked ;)
-     */
+    @Test
+    void testDoctorEntity() {
+        Doctor doctor = new Doctor("Dr. John Doe", "Cardiology");
+        entityManager.persistAndFlush(doctor);
+
+        Doctor retrievedDoctor = doctorRepository.findById(doctor.getId()).orElse(null);
+
+        assertThat(retrievedDoctor).isNotNull();
+        assertThat(retrievedDoctor).isEqualTo(doctor);
+    }
+
+    @Test
+    void testPatientEntity() {
+        Patient patient = new Patient("John Smith", "john@example.com", "123456789");
+        entityManager.persistAndFlush(patient);
+
+        Patient retrievedPatient = patientRepository.findById(patient.getId()).orElse(null);
+
+        assertThat(retrievedPatient).isNotNull();
+        assertThat(retrievedPatient).isEqualTo(patient);
+    }
+
+    @Test
+    void testRoomEntity() {
+        Room room = new Room("Room101");
+        entityManager.persistAndFlush(room);
+
+        Room retrievedRoom = roomRepository.findById(room.getRoomName()).orElse(null);
+
+        assertThat(retrievedRoom).isNotNull();
+        assertThat(retrievedRoom).isEqualTo(room);
+    }
 }

@@ -1,114 +1,84 @@
-package com.example.demo.entities;
+package com.example.demo.controllers;
 
-import java.time.LocalDateTime;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.*;
-import com.fasterxml.jackson.annotation.JsonFormat;
+import com.example.demo.repositories.*;
+import com.example.demo.entities.*;
 
-@Entity
-public class Appointment {
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
-    @Id
-    @GeneratedValue(strategy=GenerationType.AUTO)
-    private long id;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
 
+@RestController
+@RequestMapping("/api")
+public class AppointmentController {
 
-    @ManyToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "patient_id", referencedColumnName = "id")
-    private Patient patient;
+    @Autowired
+    AppointmentRepository appointmentRepository;
 
-    @ManyToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "doctor_id", referencedColumnName = "id")
-    private Doctor doctor;
+    @GetMapping("/appointments")
+    public ResponseEntity<List<Appointment>> getAllAppointments(){
+        List<Appointment> appointments = new ArrayList<>();
 
-    @ManyToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "room_id", referencedColumnName = "roomName")
-    private Room room;
+        appointmentRepository.findAll().forEach(appointments::add);
 
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm dd/MM/yyyy")
-    private LocalDateTime startsAt;
-
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm dd/MM/yyyy")
-    private LocalDateTime finishesAt;
-
-    public Appointment(){
-        super();
-    }
-
-    public Appointment( Patient patient, Doctor doctor, Room room, LocalDateTime startsAt, LocalDateTime finishesAt){
-        this.patient = patient;
-        this.doctor = doctor;
-        this.room = room;
-        this.startsAt =  startsAt;
-        this.finishesAt =  finishesAt;
-    }
-
-    public long getId(){
-        return this.id;
-    }
-
-    public void setId(long id){
-        this.id = id;
-    }
-    
-    public LocalDateTime getStartsAt(){
-        return this.startsAt;
-    }
-    public void setStartsAt(LocalDateTime startsAt){
-        this.startsAt = startsAt;
-    }
-    
-    public LocalDateTime getFinishesAt(){
-        return this.finishesAt;
-    }
-    public void setFinishesAt(LocalDateTime finishesAt){
-        this.finishesAt = finishesAt;
-    }
-
-    public Patient getPatient(){
-        return this.patient;
-    }
-    public void setPatient(Patient patient){
-        this.patient = patient;
-    }
-
-    public Doctor getDoctor(){
-        return this.doctor;
-    }
-    public void setDoctor(Doctor doctor){
-        this.doctor = doctor;
-    }
-
-    public Room getRoom(){
-        return this.room;
-    }
-    public void setRoom(Room room){
-        this.room = room;
-    }
-    
-    public boolean overlaps( Appointment appointment){
-        /// True when:
-        // Case 1: A.starts == B.starts
-        // Case 2: A.finishes == B.finishes 
-        // Case 3: A.starts < B.finishes && B.finishes < A.finishes
-        // Case 4: B.starts < A.starts && A.finishes < B.finishes
-        if (appointment.getRoom().getRoomName().equals(this.getRoom().getRoomName())){ 
-            if (this.getStartsAt().equals(appointment.getStartsAt()) || 
-                    appointment.getFinishesAt().equals(this.getFinishesAt())){
-                return true;
-                    }
-            if (appointment.getFinishesAt().isAfter(this.getStartsAt()) && appointment.getFinishesAt().isBefore(this.getFinishesAt())){
-                return true;
-            }
-            if ( appointment.getStartsAt().isAfter(this.getStartsAt()) && appointment.getStartsAt().isBefore(this.getFinishesAt())){
-                return true;
-            }
+        if (appointments.isEmpty()){
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         }
-        
-        return false;
+
+        return new ResponseEntity<>(appointments, HttpStatus.OK);
     }
 
+    @GetMapping("/appointments/{id}")
+    public ResponseEntity<Appointment> getAppointmentById(@PathVariable("id") long id){
+        Optional<Appointment> appointment = appointmentRepository.findById(id);
+
+        if (appointment.isPresent()){
+            return new ResponseEntity<>(appointment.get(), HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+
+    @PostMapping("/appointment")
+    public ResponseEntity<Appointment> createAppointment(@RequestBody Appointment appointment) {
+        try {
+            // Se guarda la nueva cita en la base de datos utilizando el AppointmentRepository
+            Appointment _appointment = appointmentRepository.save(appointment);
+            
+            // Se devuelve una respuesta con la cita recién creada y el estado HTTP 201 Created
+            return new ResponseEntity<>(_appointment, HttpStatus.CREATED);
+        } catch (Exception e) {
+            // En caso de error durante la creación, se devuelve una respuesta con el estado HTTP 500 Internal Server Error
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @DeleteMapping("/appointments/{id}")
+    public ResponseEntity<HttpStatus> deleteAppointment(@PathVariable("id") long id){
+        Optional<Appointment> appointment = appointmentRepository.findById(id);
+
+        if (!appointment.isPresent()){
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+
+        appointmentRepository.deleteById(id);
+
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @DeleteMapping("/appointments")
+    public ResponseEntity<HttpStatus> deleteAllAppointments(){
+        appointmentRepository.deleteAll();
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
 }
